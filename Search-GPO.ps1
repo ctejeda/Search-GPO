@@ -22,7 +22,10 @@ Function Search-GPO {
         $gpoid = $gpo.Id
         $gpoDisplayName = $gpo.DisplayName
         $report = Get-GPOReport -Guid $gpoid -ReportType Xml -Domain $domain -Server $dc
-        $gpoPath = "\\$domain\SYSVOL\$domain\Policies\{$gpoid}"
+
+        # Find where the GPO is linked
+        $gpoLinks = Get-GPInheritance -Target "ou=$domain,dc=$dc" | Select-Object -ExpandProperty GpoLinks
+        $ouPaths = $gpoLinks | Where-Object { $_.GpoId -eq $gpoid } | ForEach-Object { $_.Target }
 
         if ($report -match $string) {
             $gpoarray += [pscustomobject] @{
@@ -30,7 +33,7 @@ Function Search-GPO {
                 String = $string
                 Matched = "True"
                 GUID = "$gpoid"
-                Path = $gpoPath
+                OUs = $ouPaths -join ", "
             }
         } else {
             $gpoarray += [pscustomobject] @{
@@ -38,7 +41,7 @@ Function Search-GPO {
                 String = $string
                 Matched = "False"
                 GUID = "$gpoid"
-                Path = $gpoPath
+                OUs = $ouPaths -join ", "
             }
         }
     }
